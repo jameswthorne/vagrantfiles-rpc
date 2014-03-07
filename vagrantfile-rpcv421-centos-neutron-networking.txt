@@ -29,16 +29,6 @@ set -v
 # Set exit on error
 set -e
 
-# Silly Ubuntu 12.04 doesn't have the
-# --stdin option in the passwd utility
-echo root:vagrant | chpasswd
-
-cat << EOF >> /etc/hosts
-192.168.236.10 chef
-192.168.236.11 controller1
-192.168.236.12 compute1
-EOF
-
 # wget complains even though SSL certificate is a wild card
 wget --no-check-certificate https://raw.github.com/rcbops/support-tools/master/chef-install/install-chef-server.sh -O /tmp/install-chef-server.sh
 
@@ -287,6 +277,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.define "chef" do |chef_config|
     chef_config.vm.hostname = "chef"
 
+    chef_config.vm.provision "shell", inline: $commonscript
     chef_config.vm.provision "shell", inline: $chefscript
 
     # eth1
