@@ -19,6 +19,7 @@ cat << EOF >> /etc/hosts
 192.168.236.10 chef
 192.168.236.11 controller1
 192.168.236.12 compute1
+192.168.236.13 cinder1
 EOF
 COMMONSCRIPT
 
@@ -83,6 +84,13 @@ cat << EOF >> /tmp/rpcv421.json
                 "external_bridge": ""
             }
         },
+        "cinder": {
+            "services": {
+                "volume": {
+                    "network": "cinder"
+                }
+            }
+        },
         "mysql": {
             "allow_remote_root": true,
             "root_network_acl": "%"
@@ -91,7 +99,8 @@ cat << EOF >> /tmp/rpcv421.json
             "nova": "192.168.236.0/24",
             "public": "192.168.236.0/24",
             "management": "192.168.236.0/24",
-            "neutron": "192.168.240.0/24"
+            "neutron": "192.168.240.0/24",
+            "cinder": "192.168.236.0/24"
         }
     }
 }
@@ -106,6 +115,9 @@ ssh-keyscan 192.168.236.11 >> /root/.ssh/known_hosts
 
 ssh-keyscan compute1 >> /root/.ssh/known_hosts
 ssh-keyscan 192.168.236.12 >> /root/.ssh/known_hosts
+
+ssh-keyscan cinder1 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.13 >> /root/.ssh/known_hosts
 
 apt-get install -y expect
 
@@ -123,9 +135,30 @@ send "vagrant\n"
 expect eof
 EOF
 
+expect<<EOF
+spawn ssh-copy-id cinder1
+expect "root@cinder1's password:"
+send "vagrant\n"
+expect eof
+EOF
+
+ssh cinder1 bash -c "'
+apt-get install -y parted
+
+parted /dev/sda mkpart primary 21.6GB 42.9GB
+parted /dev/sda set 3 lvm on
+
+partx -a /dev/sda
+
+pvcreate /dev/sda3
+vgcreate cinder-volumes /dev/sda3
+'"
+
 knife bootstrap controller1 --environment rpcv421 --run-list 'role[single-controller],role[single-network-node]' || while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 knife bootstrap compute1 --environment rpcv421 --run-list 'role[single-compute]' || while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+
+knife bootstrap cinder1 --environment rpcv421 --run-list 'role[cinder-volume]' || while ! knife ssh "name:cinder1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 #
 # Post-install controller1 configuration
@@ -257,6 +290,27 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
   end
   # End compute1
+
+  # Begin cinder1
+  config.vm.define "cinder1" do |cinder1_config|
+    cinder1_config.vm.hostname = "cinder1"
+
+    cinder1_config.vm.provision "shell", inline: $commonscript
+
+    # eth1
+    cinder1_config.vm.network "private_network", ip: "192.168.236.13"
+
+    cinder1_config.vm.provider "vmware_fusion" do |v|
+        v.vmx["memsize"] = "1024"
+        v.vmx["numvcpus"] = "1"
+    end
+
+    cinder1_config.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--memory", "1024"]
+        v.customize ["modifyvm", :id, "--cpus", "1"]
+    end
+  end
+  # End cinder1
 
   # Begin chef
   config.vm.define "chef" do |chef_config|
