@@ -17,9 +17,9 @@ echo root:vagrant | chpasswd
 
 cat << EOF >> /etc/hosts
 192.168.236.10 chef
-192.168.236.11 controller1
-192.168.236.12 compute1
-192.168.236.13 cinder1
+192.168.236.20 controller1
+192.168.236.30 compute1
+192.168.236.40 cinder1
 EOF
 COMMONSCRIPT
 
@@ -112,13 +112,13 @@ knife environment from file /tmp/rpcv421.json
 ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
 
 ssh-keyscan controller1 >> /root/.ssh/known_hosts
-ssh-keyscan 192.168.236.11 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.20 >> /root/.ssh/known_hosts
 
 ssh-keyscan compute1 >> /root/.ssh/known_hosts
-ssh-keyscan 192.168.236.12 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.30 >> /root/.ssh/known_hosts
 
 ssh-keyscan cinder1 >> /root/.ssh/known_hosts
-ssh-keyscan 192.168.236.13 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.40 >> /root/.ssh/known_hosts
 
 yum install -y expect
 
@@ -166,7 +166,7 @@ knife bootstrap cinder1 --environment rpcv421 --run-list 'role[cinder-volume]' |
 #
 ssh -T controller1 << EOF
 ip link set eth3 down
-ip addr del 192.168.244.11/24 dev eth3
+ip addr del 192.168.244.20/24 dev eth3
 
 cat << 'EOFNETINT' > /etc/sysconfig/network-scripts/ifcfg-br-eth3
 DEVICE=br-eth3
@@ -177,7 +177,7 @@ NM_CONTROLLED=no
 HOTPLUG=no
 DEVICETYPE=ovs
 TYPE=OVSBridge
-IPADDR=192.168.244.11
+IPADDR=192.168.244.20
 NETMASK=255.255.255.0
 EOFNETINT
 
@@ -195,7 +195,7 @@ EOFNETINT
 
 ip link set eth3 up
 ip link set br-eth3 up
-ip address add 192.168.244.11/24 dev br-eth3
+ip address add 192.168.244.20/24 dev br-eth3
 
 ovs-vsctl add-port br-eth3 eth3
 EOF
@@ -205,7 +205,7 @@ EOF
 #
 ssh -T compute1 << EOF
 ip link set eth3 down
-ip addr del 192.168.244.12/24 dev eth3
+ip addr del 192.168.244.30/24 dev eth3
 
 cat << 'EOFNETINT' > /etc/sysconfig/network-scripts/ifcfg-br-eth3
 DEVICE=br-eth3
@@ -216,7 +216,7 @@ NM_CONTROLLED=no
 HOTPLUG=no
 DEVICETYPE=ovs
 TYPE=OVSBridge
-IPADDR=192.168.244.12
+IPADDR=192.168.244.30
 NETMASK=255.255.255.0
 EOFNETINT
 
@@ -234,7 +234,7 @@ EOFNETINT
 
 ip link set eth3 up
 ip link set br-eth3 up
-ip address add 192.168.244.12/24 dev br-eth3
+ip address add 192.168.244.30/24 dev br-eth3
 
 ovs-vsctl add-port br-eth3 eth3
 EOF
@@ -267,13 +267,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     controller1_config.vm.provision "shell", inline: $commonscript
 
     # eth1
-    controller1_config.vm.network "private_network", ip: "192.168.236.11"
+    controller1_config.vm.network "private_network", ip: "192.168.236.20"
     # eth2
-    controller1_config.vm.network "private_network", ip: "192.168.240.11"
+    controller1_config.vm.network "private_network", ip: "192.168.240.20"
     # eth3
-    controller1_config.vm.network "private_network", ip: "192.168.244.11"
+    controller1_config.vm.network "private_network", ip: "192.168.244.20"
     # eth4
-    controller1_config.vm.network "private_network", ip: "192.168.248.11"
+    controller1_config.vm.network "private_network", ip: "192.168.248.20"
 
     controller1_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "1536"
@@ -295,13 +295,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     compute1_config.vm.provision "shell", inline: $commonscript
 
     # eth1
-    compute1_config.vm.network "private_network", ip: "192.168.236.12"
+    compute1_config.vm.network "private_network", ip: "192.168.236.30"
     # eth2
-    compute1_config.vm.network "private_network", ip: "192.168.240.12"
+    compute1_config.vm.network "private_network", ip: "192.168.240.30"
     # eth3
-    compute1_config.vm.network "private_network", ip: "192.168.244.12"
+    compute1_config.vm.network "private_network", ip: "192.168.244.30"
     # eth4
-    compute1_config.vm.network "private_network", ip: "192.168.248.12"
+    compute1_config.vm.network "private_network", ip: "192.168.248.30"
 
     compute1_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "2048"
@@ -323,9 +323,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     cinder1_config.vm.provision "shell", inline: $commonscript
 
     # eth1
-    cinder1_config.vm.network "private_network", ip: "192.168.236.13"
+    cinder1_config.vm.network "private_network", ip: "192.168.236.40"
     # eth2
-    cinder1_config.vm.network "private_network", ip: "192.168.248.13"
+    cinder1_config.vm.network "private_network", ip: "192.168.248.40"
 
     cinder1_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "1024"
