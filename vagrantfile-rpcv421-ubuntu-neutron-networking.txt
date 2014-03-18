@@ -100,7 +100,7 @@ cat << EOF >> /tmp/rpcv421.json
             "public": "192.168.236.0/24",
             "management": "192.168.236.0/24",
             "neutron": "192.168.240.0/24",
-            "cinder": "192.168.236.0/24"
+            "cinder": "192.168.248.0/24"
         }
     }
 }
@@ -142,17 +142,17 @@ send "vagrant\n"
 expect eof
 EOF
 
-ssh cinder1 bash -c "'
-apt-get install -y parted
+#
+# Pre-install cinder1 configuration
+#
+ssh -T cinder1 << EOF
+dd if=/dev/zero of=/tmp/cinder-volumes bs=1 count=0 seek=10G
 
-parted /dev/sda mkpart primary 21.6GB 42.9GB
-parted /dev/sda set 3 lvm on
+losetup /dev/loop2 /tmp/cinder-volumes
 
-partx -a /dev/sda
-
-pvcreate /dev/sda3
-vgcreate cinder-volumes /dev/sda3
-'"
+pvcreate /dev/loop2
+vgcreate cinder-volumes /dev/loop2
+EOF
 
 knife bootstrap controller1 --environment rpcv421 --run-list 'role[single-controller],role[single-network-node]' || while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
@@ -192,7 +192,7 @@ EOF
 #
 # Post-install compute1 configuration
 #
-ssh compute1 << EOF
+ssh -T compute1 << EOF
 ip link set eth3 down
 ip addr del 192.168.244.12/24 dev eth3
 
@@ -251,6 +251,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     controller1_config.vm.network "private_network", ip: "192.168.240.11"
     # eth3
     controller1_config.vm.network "private_network", ip: "192.168.244.11"
+    # eth4
+    controller1_config.vm.network "private_network", ip: "192.168.248.11"
 
     controller1_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "1536"
@@ -277,6 +279,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     compute1_config.vm.network "private_network", ip: "192.168.240.12"
     # eth3
     compute1_config.vm.network "private_network", ip: "192.168.244.12"
+    # eth4
+    compute1_config.vm.network "private_network", ip: "192.168.248.12"
 
     compute1_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "2048"
@@ -299,6 +303,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     # eth1
     cinder1_config.vm.network "private_network", ip: "192.168.236.13"
+    # eth2
+    cinder1_config.vm.network "private_network", ip: "192.168.248.13"
 
     cinder1_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "1024"

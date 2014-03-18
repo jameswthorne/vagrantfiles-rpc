@@ -20,6 +20,7 @@ cat << EOF >> /etc/hosts
 192.168.236.11 controller1
 192.168.236.12 controller2
 192.168.236.13 compute1
+192.168.236.14 cinder1
 EOF
 COMMONSCRIPT
 
@@ -84,6 +85,13 @@ cat << EOF >> /tmp/rpcv421.json
                 "external_bridge": ""
             }
         },
+        "cinder": {
+            "services": {
+                "volume": {
+                    "network": "cinder"
+                }
+            }
+        },        
         "mysql": {
             "allow_remote_root": true,
             "root_network_acl": "%"
@@ -92,7 +100,8 @@ cat << EOF >> /tmp/rpcv421.json
             "nova": "192.168.236.0/24",
             "public": "192.168.236.0/24",
             "management": "192.168.236.0/24",
-            "neutron": "192.168.240.0/24"
+            "neutron": "192.168.240.0/24",
+            "cinder": "192.168.248.0/24"
         },
         "vips": {
             "rabbitmq-queue": "192.168.236.50",
@@ -148,6 +157,9 @@ ssh-keyscan 192.168.236.12 >> /root/.ssh/known_hosts
 ssh-keyscan compute1 >> /root/.ssh/known_hosts
 ssh-keyscan 192.168.236.13 >> /root/.ssh/known_hosts
 
+ssh-keyscan cinder1 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.14 >> /root/.ssh/known_hosts
+
 apt-get install -y expect
 
 expect<<EOF
@@ -171,6 +183,25 @@ send "vagrant\n"
 expect eof
 EOF
 
+expect<<EOF
+spawn ssh-copy-id cinder1
+expect "root@cinder1's password:"
+send "vagrant\n"
+expect eof
+EOF
+
+#
+# Pre-install cinder1 configuration
+#
+ssh -T cinder1 << EOF
+dd if=/dev/zero of=/tmp/cinder-volumes bs=1 count=0 seek=10G
+
+losetup /dev/loop2 /tmp/cinder-volumes
+
+pvcreate /dev/loop2
+vgcreate cinder-volumes /dev/loop2
+EOF
+
 knife bootstrap controller1 --environment rpcv421 --run-list 'role[ha-controller1],role[single-network-node]' || while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 knife bootstrap controller2 --environment rpcv421 --run-list 'role[ha-controller2],role[single-network-node]' || while ! knife ssh "name:controller2" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
@@ -179,10 +210,12 @@ knife ssh "name:controller1" "chef-client"
 
 knife bootstrap compute1 --environment rpcv421 --run-list 'role[single-compute]' || while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
+knife bootstrap cinder1 --environment rpcv421 --run-list 'role[cinder-volume]' || while ! knife ssh "name:cinder1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+
 #
 # Post-install controller1 configuration
 #
-ssh controller1 << EOF
+ssh -T controller1 << EOF
 ip link set eth3 down
 ip addr del 192.168.244.11/24 dev eth3
 
@@ -211,7 +244,7 @@ EOF
 #
 # Post-install controller2 configuration
 #
-ssh controller2 << EOF
+ssh -T controller2 << EOF
 ip link set eth3 down
 ip addr del 192.168.244.12/24 dev eth3
 
@@ -240,7 +273,7 @@ EOF
 #
 # Post-install compute1 configuration
 #
-ssh compute1 << EOF
+ssh -T compute1 << EOF
 ip link set eth3 down
 ip addr del 192.168.244.13/24 dev eth3
 
@@ -299,6 +332,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     controller1_config.vm.network "private_network", ip: "192.168.240.11"
     # eth3
     controller1_config.vm.network "private_network", ip: "192.168.244.11"
+    # eth4
+    controller1_config.vm.network "private_network", ip: "192.168.248.11"
 
     controller1_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "1536"
@@ -325,6 +360,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     controller2_config.vm.network "private_network", ip: "192.168.240.12"
     # eth3
     controller2_config.vm.network "private_network", ip: "192.168.244.12"
+    # eth4
+    controller1_config.vm.network "private_network", ip: "192.168.248.12"
 
     controller2_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "1536"
@@ -351,6 +388,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     compute1_config.vm.network "private_network", ip: "192.168.240.13"
     # eth3
     compute1_config.vm.network "private_network", ip: "192.168.244.13"
+    # eth4
+    compute1_config.vm.network "private_network", ip: "192.168.248.13"
 
     compute1_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "2048"
@@ -364,6 +403,29 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
   end
   # End compute1
+
+  # Begin cinder1
+  config.vm.define "cinder1" do |cinder1_config|
+    cinder1_config.vm.hostname = "cinder1"
+
+    cinder1_config.vm.provision "shell", inline: $commonscript
+
+    # eth1
+    cinder1_config.vm.network "private_network", ip: "192.168.236.14"
+    # eth2
+    cinder1_config.vm.network "private_network", ip: "192.168.248.14"
+
+    cinder1_config.vm.provider "vmware_fusion" do |v|
+        v.vmx["memsize"] = "1024"
+        v.vmx["numvcpus"] = "1"
+    end
+
+    cinder1_config.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--memory", "1024"]
+        v.customize ["modifyvm", :id, "--cpus", "1"]
+    end
+  end
+  # End cinder1
 
   # Begin chef
   config.vm.define "chef" do |chef_config|
