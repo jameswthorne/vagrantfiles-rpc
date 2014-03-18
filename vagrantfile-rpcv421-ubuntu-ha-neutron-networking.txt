@@ -361,7 +361,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # eth3
     controller2_config.vm.network "private_network", ip: "192.168.244.21"
     # eth4
-    controller1_config.vm.network "private_network", ip: "192.168.248.21"
+    controller2_config.vm.network "private_network", ip: "192.168.248.21"
 
     controller2_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "1536"
