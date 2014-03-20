@@ -166,7 +166,6 @@ knife bootstrap cinder1 --environment rpcv421 --run-list 'role[cinder-volume]' |
 ssh -T controller1 << EOF
 ip link set eth3 down
 ip addr del 192.168.244.20/24 dev eth3
-
 ip link set eth3 up
 ip link set br-eth3 up
 ip address add 192.168.244.20/24 dev br-eth3
@@ -175,7 +174,7 @@ ovs-vsctl add-port br-eth3 eth3
 
 sed -i -e '/^exit 0/d' /etc/rc.local
 
-cat << 'EOFRCLOCAL' >> /etc/rc.local
+cat << EOFRCLOCAL >> /etc/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
 ip link set eth3 down
@@ -201,7 +200,7 @@ ovs-vsctl add-port br-eth3 eth3
 
 sed -i -e '/^exit 0/d' /etc/rc.local
 
-cat << 'EOFRCLOCAL' >> /etc/rc.local
+cat << EOFRCLOCAL >> /etc/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
 ip link set eth3 down
@@ -223,6 +222,11 @@ sysctl -w net.ipv4.ip_forward=1
 iptables -A FORWARD -i eth2 -j ACCEPT
 
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+cat << EOFRCLOCAL >> /etc/rc.local
+iptables -A FORWARD -i eth2 -j ACCEPT
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+EOFRCLOCAL
 
 echo "All done!"
 CHEFSCRIPT
