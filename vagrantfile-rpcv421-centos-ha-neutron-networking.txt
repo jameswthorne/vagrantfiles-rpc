@@ -202,9 +202,9 @@ losetup /dev/loop2 /mnt/cinder-volumes
 pvcreate /dev/loop2
 vgcreate cinder-volumes /dev/loop2
 
-sed -i -e '/^exit 0/d' /etc/rc.local
+sed -i -e '/^exit 0/d' /etc/rc.d/rc.local
 
-cat << EOFRCLOCAL >> /etc/rc.local
+cat << EOFRCLOCAL >> /etc/rc.d/rc.local
 losetup /dev/loop2 /mnt/cinder-volumes
 pvscan
 exit 0
@@ -234,9 +234,9 @@ ip address add 192.168.244.20/24 dev br-eth3
 
 ovs-vsctl add-port br-eth3 eth3
 
-sed -i -e '/^exit 0/d' /etc/rc.local
+sed -i -e '/^exit 0/d' /etc/rc.d/rc.local
 
-cat << EOFRCLOCAL >> /etc/rc.local
+cat << EOFRCLOCAL >> /etc/rc.d/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
 ip link set eth3 down
@@ -260,9 +260,9 @@ ip address add 192.168.244.21/24 dev br-eth3
 
 ovs-vsctl add-port br-eth3 eth3
 
-sed -i -e '/^exit 0/d' /etc/rc.local
+sed -i -e '/^exit 0/d' /etc/rc.d/rc.local
 
-cat << EOFRCLOCAL >> /etc/rc.local
+cat << EOFRCLOCAL >> /etc/rc.d/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
 ip link set eth3 down
@@ -286,9 +286,9 @@ ip address add 192.168.244.30/24 dev br-eth3
 
 ovs-vsctl add-port br-eth3 eth3
 
-sed -i -e '/^exit 0/d' /etc/rc.local
+sed -i -e '/^exit 0/d' /etc/rc.d/rc.local
 
-cat << EOFRCLOCAL >> /etc/rc.local
+cat << EOFRCLOCAL >> /etc/rc.d/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
 ip link set eth3 down
@@ -311,9 +311,9 @@ iptables -A FORWARD -i eth2 -j ACCEPT
 
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 
-sed -i -e '/^exit 0/d' /etc/rc.local
+sed -i -e '/^exit 0/d' /etc/rc.d/rc.local
 
-cat << EOFRCLOCAL >> /etc/rc.local
+cat << EOFRCLOCAL >> /etc/rc.d/rc.local
 iptables -A FORWARD -i eth2 -j ACCEPT
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 exit 0
