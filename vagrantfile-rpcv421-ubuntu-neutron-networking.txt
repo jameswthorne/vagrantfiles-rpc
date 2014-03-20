@@ -146,12 +146,20 @@ EOF
 # Pre-install cinder1 configuration
 #
 ssh -T cinder1 << EOF
-dd if=/dev/zero of=/tmp/cinder-volumes bs=1 count=0 seek=10G
+dd if=/dev/zero of=/mnt/cinder-volumes bs=1 count=0 seek=10G
 
-losetup /dev/loop2 /tmp/cinder-volumes
+losetup /dev/loop2 /mnt/cinder-volumes
 
 pvcreate /dev/loop2
 vgcreate cinder-volumes /dev/loop2
+
+sed -i -e '/^exit 0/d' /etc/rc.local
+
+cat << EOFRCLOCAL >> /etc/rc.local
+losetup /dev/loop2 /mnt/cinder-volumes
+pvscan
+exit 0
+EOFRCLOCAL
 EOF
 
 knife bootstrap controller1 --environment rpcv421 --run-list 'role[single-controller],role[single-network-node]' || while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
@@ -223,9 +231,12 @@ iptables -A FORWARD -i eth2 -j ACCEPT
 
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 
+sed -i -e '/^exit 0/d' /etc/rc.local
+
 cat << EOFRCLOCAL >> /etc/rc.local
 iptables -A FORWARD -i eth2 -j ACCEPT
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+exit 0
 EOFRCLOCAL
 
 echo "All done!"
