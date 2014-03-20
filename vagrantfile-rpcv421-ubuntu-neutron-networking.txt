@@ -173,16 +173,18 @@ ip address add 192.168.244.20/24 dev br-eth3
 
 ovs-vsctl add-port br-eth3 eth3
 
-sed -i -e '
-/^exit 0/ i\
-# This is here to reconfigure networking\
-# if the Vagrant instance is rebooted\
-ip link set eth3 down\
-ip addr del 192.168.244.20/24 dev eth3\
-ip link set eth3 up\
-ip link set br-eth3 up\
+sed -i -e '/^exit 0/d' /etc/rc.local
+
+cat << 'EOFRCLOCAL' >> /etc/rc.local
+# This is here to reconfigure eth3
+# if the Vagrant instance is rebooted
+ip link set eth3 down
+ip addr del 192.168.244.20/24 dev eth3
+ip link set eth3 up
+ip link set br-eth3 up
 ip address add 192.168.244.20/24 dev br-eth3
-' /etc/rc.local
+exit 0
+EOFRCLOCAL
 EOF
 
 #
@@ -197,16 +199,18 @@ ip address add 192.168.244.30/24 dev br-eth3
 
 ovs-vsctl add-port br-eth3 eth3
 
-sed -i -e '
-/^exit 0/ i\
-# This is here to reconfigure networking\
-# if the Vagrant instance is rebooted\
-ip link set eth3 down\
-ip addr del 192.168.244.20/24 dev eth3\
-ip link set eth3 up\
-ip link set br-eth3 up\
-ip address add 192.168.244.20/24 dev br-eth3
-' /etc/rc.local
+sed -i -e '/^exit 0/d' /etc/rc.local
+
+cat << 'EOFRCLOCAL' >> /etc/rc.local
+# This is here to reconfigure eth3
+# if the Vagrant instance is rebooted
+ip link set eth3 down
+ip addr del 192.168.244.30/24 dev eth3
+ip link set eth3 up
+ip link set br-eth3 up
+ip address add 192.168.244.30/24 dev br-eth3
+exit 0
+EOFRCLOCAL
 EOF
 
 #
