@@ -318,12 +318,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     cinder1_config.vm.network "private_network", ip: "192.168.248.40"
 
     cinder1_config.vm.provider "vmware_fusion" do |v|
-        v.vmx["memsize"] = "1024"
+        v.vmx["memsize"] = "512"
         v.vmx["numvcpus"] = "1"
     end
 
     cinder1_config.vm.provider "virtualbox" do |v|
-        v.customize ["modifyvm", :id, "--memory", "1024"]
+        v.customize ["modifyvm", :id, "--memory", "512"]
         v.customize ["modifyvm", :id, "--cpus", "1"]
     end
   end
