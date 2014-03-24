@@ -184,9 +184,17 @@ sed -i -e '/^exit 0/d' /etc/rc.d/rc.local
 cat << EOFRCLOCAL >> /etc/rc.d/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
+sleep 10
 ip address delete 192.168.244.20/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.20/24 dev br-eth3
+# Restart all OpenStack services
+# monit isn't monitoring everything, so we
+# have to restart some services manually
+service rabbitmq-server restart
+service openvswitch restart
+service neutron-openvswitch-agent restart
+/usr/bin/monit restart all
 exit 0
 EOFRCLOCAL
 EOF
@@ -206,9 +214,12 @@ sed -i -e '/^exit 0/d' /etc/rc.d/rc.local
 cat << EOFRCLOCAL >> /etc/rc.d/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
+sleep 10
 ip address delete 192.168.244.30/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.30/24 dev br-eth3
+# Restart all OpenStack services
+/usr/bin/monit restart all
 exit 0
 EOFRCLOCAL
 EOF
