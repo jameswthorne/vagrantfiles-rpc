@@ -91,7 +91,7 @@ cat << EOF >> /tmp/rpcv421.json
                     "network": "cinder"
                 }
             }
-        },        
+        },
         "mysql": {
             "allow_remote_root": true,
             "root_network_acl": "%"
