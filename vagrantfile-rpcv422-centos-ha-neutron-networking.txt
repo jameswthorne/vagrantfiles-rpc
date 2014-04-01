@@ -46,7 +46,7 @@ git clone https://github.com/rcbops/chef-cookbooks.git
 
 cd chef-cookbooks
 
-git checkout v4.2.1
+git checkout v4.2.2
 git submodule init
 git submodule sync
 git submodule update
@@ -55,10 +55,10 @@ knife cookbook upload -a -o cookbooks
 
 knife role from file roles/*rb
 
-cat << EOF >> /tmp/rpcv421.json
+cat << EOF >> /tmp/rpcv422.json
 {
-    "name": "rpcv421",
-    "description": "Rackspace Private Cloud v4.2.1",
+    "name": "rpcv422",
+    "description": "Rackspace Private Cloud v4.2.2",
     "cookbook_versions": {},
     "json_class": "Chef::Environment",
     "chef_type": "environment",
@@ -145,7 +145,7 @@ cat << EOF >> /tmp/rpcv421.json
 }
 EOF
 
-knife environment from file /tmp/rpcv421.json
+knife environment from file /tmp/rpcv422.json
 
 ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
 
@@ -211,15 +211,15 @@ exit 0
 EOFRCLOCAL
 EOF
 
-knife bootstrap controller1 --environment rpcv421 --run-list 'role[ha-controller1],role[single-network-node]' || while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+knife bootstrap controller1 --environment rpcv422 --run-list 'role[ha-controller1],role[single-network-node]' || while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
-knife bootstrap controller2 --environment rpcv421 --run-list 'role[ha-controller2],role[single-network-node]' || while ! knife ssh "name:controller2" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+knife bootstrap controller2 --environment rpcv422 --run-list 'role[ha-controller2],role[single-network-node]' || while ! knife ssh "name:controller2" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 knife ssh "name:controller1" "chef-client"
 
-knife bootstrap compute1 --environment rpcv421 --run-list 'role[single-compute]' || while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+knife bootstrap compute1 --environment rpcv422 --run-list 'role[single-compute]' || while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
-knife bootstrap cinder1 --environment rpcv421 --run-list 'role[cinder-volume]' || while ! knife ssh "name:cinder1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+knife bootstrap cinder1 --environment rpcv422 --run-list 'role[cinder-volume]' || while ! knife ssh "name:cinder1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 #
 # Post-install controller1 configuration
