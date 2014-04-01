@@ -1,0 +1,100 @@
+# -*- mode: ruby -*-
+
+# vi: set ft=ruby :
+
+VAGRANTFILE_API_VERSION = "2"
+
+$script = <<SCRIPT
+# Silly Ubuntu 12.04 doesn't have the
+# --stdin option in the passwd utility
+echo root:vagrant | chpasswd
+
+cat << EOF >> /etc/hosts
+192.168.236.10 chef
+192.168.236.20 controller1
+192.168.236.30 compute1
+EOF
+SCRIPT
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+  config.vm.box = "ubuntu-server-12.04.3-lts-x86_64"
+
+  # Turn off shared folders
+  config.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true
+
+  # Begin chef
+  config.vm.define "chef" do |chef_config|
+    chef_config.vm.hostname = "chef"
+
+    chef_config.vm.provision "shell", inline: $script
+
+    # eth1
+    chef_config.vm.network "private_network", ip: "192.168.236.10"
+    # eth2
+    chef_config.vm.network "private_network", ip: "192.168.244.10"
+
+    chef_config.vm.provider "vmware_fusion" do |v|
+        v.vmx["memsize"] = "1024"
+        v.vmx["numvcpus"] = "1"
+    end
+
+    chef_config.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--memory", "1024"]
+        v.customize ["modifyvm", :id, "--cpus", "1"]
+    end
+  end
+  # End chef
+
+  # Begin controller1
+  config.vm.define "controller1" do |controller1_config|
+    controller1_config.vm.hostname = "controller1"
+
+    controller1_config.vm.provision "shell", inline: $script
+
+    # eth1
+    controller1_config.vm.network "private_network", ip: "192.168.236.20"
+    # eth2
+    controller1_config.vm.network "private_network", ip: "192.168.240.20"
+    # eth3
+    controller1_config.vm.network "private_network", ip: "192.168.244.20"
+
+    controller1_config.vm.provider "vmware_fusion" do |v|
+        v.vmx["memsize"] = "1536"
+        v.vmx["numvcpus"] = "1"
+    end
+
+    controller1_config.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--memory", "1536"]
+        v.customize ["modifyvm", :id, "--cpus", "1"]
+        v.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"]
+    end
+  end
+  # End controller1
+
+  # Begin compute1
+  config.vm.define "compute1" do |compute1_config|
+    compute1_config.vm.hostname = "compute1"
+
+    compute1_config.vm.provision "shell", inline: $script
+
+    # eth1
+    compute1_config.vm.network "private_network", ip: "192.168.236.30"
+    # eth2
+    compute1_config.vm.network "private_network", ip: "192.168.240.30"
+    # eth3
+    compute1_config.vm.network "private_network", ip: "192.168.244.30"
+
+    compute1_config.vm.provider "vmware_fusion" do |v|
+        v.vmx["memsize"] = "2048"
+        v.vmx["numvcpus"] = "2"
+    end
+
+    compute1_config.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--memory", "2048"]
+        v.customize ["modifyvm", :id, "--cpus", "2"]
+        v.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"]
+    end
+  end
+  # End compute1
+end
