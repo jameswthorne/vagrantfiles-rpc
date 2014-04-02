@@ -120,7 +120,7 @@ cat << EOF >> /tmp/rpcv422.json
             "keystone-internal-api": "192.168.236.51",
             "keystone-service-api": "192.168.236.51",
             "nova-api": "192.168.236.51",
-            "nova-api-metadata", "192.168.236.51",
+            "nova-api-metadata": "192.168.236.51",
             "nova-ec2-public": "192.168.236.51",
             "nova-novnc-proxy": "192.168.236.51",
             "nova-xvpvnc-proxy": "192.168.236.51",
