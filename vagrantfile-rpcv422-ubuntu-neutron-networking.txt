@@ -162,11 +162,17 @@ exit 0
 EOFRCLOCAL
 EOF
 
-knife bootstrap controller1 --environment rpcv422 --run-list 'role[single-controller],role[single-network-node]' || while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+knife bootstrap controller1 --environment rpcv422
+knife node run_list add controller1 'role[single-controller],role[single-network-node]'
+while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
-knife bootstrap compute1 --environment rpcv422 --run-list 'role[single-compute]' || while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+knife bootstrap compute1 --environment rpcv422
+knife node run_list add compute1 'role[single-compute]'
+while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
-knife bootstrap cinder1 --environment rpcv422 --run-list 'role[cinder-volume]' || while ! knife ssh "name:cinder1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+knife bootstrap cinder1 --environment rpcv422
+knife node run_list add cinder1 'role[cinder-volume]'
+while ! knife ssh "name:cinder1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 #
 # Post-install controller1 configuration
