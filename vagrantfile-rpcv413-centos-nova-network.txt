@@ -17,8 +17,8 @@ echo root:vagrant | chpasswd
 
 cat << EOF >> /etc/hosts
 192.168.236.10 chef
-192.168.236.11 controller1
-192.168.236.12 compute1
+192.168.236.20 controller1
+192.168.236.30 compute1
 EOF
 COMMONSCRIPT
 
@@ -99,10 +99,10 @@ knife environment from file /tmp/rpcv413.json
 ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
 
 ssh-keyscan controller1 >> /root/.ssh/known_hosts
-ssh-keyscan 192.168.236.11 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.20 >> /root/.ssh/known_hosts
 
 ssh-keyscan compute1 >> /root/.ssh/known_hosts
-ssh-keyscan 192.168.236.12 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.30 >> /root/.ssh/known_hosts
 
 yum install -y expect
 
@@ -141,7 +141,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     controller1_config.vm.provision "shell", inline: $commonscript
 
     # eth1
-    controller1_config.vm.network "private_network", ip: "192.168.236.11"
+    controller1_config.vm.network "private_network", ip: "192.168.236.20"
 
     controller1_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "1536"
@@ -162,7 +162,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     compute1_config.vm.provision "shell", inline: $commonscript
 
     # eth1
-    compute1_config.vm.network "private_network", ip: "192.168.236.12"
+    compute1_config.vm.network "private_network", ip: "192.168.236.30"
 
     compute1_config.vm.provider "vmware_fusion" do |v|
         v.vmx["memsize"] = "2048"
