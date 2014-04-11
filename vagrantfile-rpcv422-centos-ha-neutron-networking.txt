@@ -214,20 +214,24 @@ EOF
 
 knife bootstrap controller1 --environment rpcv422
 knife node run_list add controller1 'role[ha-controller1],role[single-network-node]'
+sleep 10
 while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 knife bootstrap controller2 --environment rpcv422
 knife node run_list add controller2 'role[ha-controller2],role[single-network-node]'
+sleep 10
 while ! knife ssh "name:controller2" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 knife bootstrap compute1 --environment rpcv422
 knife node run_list add compute1 'role[single-compute]'
+sleep 10
 while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 knife bootstrap cinder1 --environment rpcv422
 knife node run_list add cinder1 'role[cinder-volume]'
+sleep 10
 while ! knife ssh "name:cinder1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 #

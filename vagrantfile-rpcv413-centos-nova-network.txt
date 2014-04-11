@@ -122,10 +122,12 @@ EOF
 
 knife bootstrap controller1 --environment rpcv413
 knife node run_list add controller1 'role[single-controller]'
+sleep 10
 while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 knife bootstrap compute1 --environment rpcv413
 knife node run_list add compute1 'role[single-compute]'
+sleep 10
 while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 echo "All done!"
