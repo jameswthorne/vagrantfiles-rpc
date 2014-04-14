@@ -248,9 +248,15 @@ sed -i -e '/^exit 0/d' /etc/rc.local
 cat << EOFRCLOCAL >> /etc/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
+sleep 10
 ip address delete 192.168.244.20/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.20/24 dev br-eth3
+# Restart Open vSwitch and the Neutron plugin
+# so there are not communication problems after
+# reconfiguring the eth3 interface
+service openvswitch-switch restart
+service neutron-plugin-openvswitch-agent restart
 exit 0
 EOFRCLOCAL
 EOF
@@ -270,9 +276,15 @@ sed -i -e '/^exit 0/d' /etc/rc.local
 cat << EOFRCLOCAL >> /etc/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
+sleep 10
 ip address delete 192.168.244.21/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.21/24 dev br-eth3
+# Restart Open vSwitch and the Neutron plugin
+# so there are not communication problems after
+# reconfiguring the eth3 interface
+service openvswitch-switch restart
+service neutron-plugin-openvswitch-agent restart
 exit 0
 EOFRCLOCAL
 EOF
@@ -292,9 +304,14 @@ sed -i -e '/^exit 0/d' /etc/rc.local
 cat << EOFRCLOCAL >> /etc/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
+sleep 10
 ip address delete 192.168.244.30/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.30/24 dev br-eth3
+# Restart the Neutron plugin so there are not
+# communication problems after reconfiguring
+# the eth3 interface
+service neutron-plugin-openvswitch-agent restart
 exit 0
 EOFRCLOCAL
 EOF

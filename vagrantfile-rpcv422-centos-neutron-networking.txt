@@ -197,13 +197,11 @@ sleep 10
 ip address delete 192.168.244.20/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.20/24 dev br-eth3
-# Restart all OpenStack services
-# monit isn't monitoring everything, so we
-# have to restart some services manually
-service rabbitmq-server restart
+# Restart Open vSwitch and the Neutron plugin
+# so there are not communication problems after
+# reconfiguring the eth3 interface
 service openvswitch restart
 service neutron-openvswitch-agent restart
-/usr/bin/monit restart all
 exit 0
 EOFRCLOCAL
 EOF
@@ -227,8 +225,10 @@ sleep 10
 ip address delete 192.168.244.30/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.30/24 dev br-eth3
-# Restart all OpenStack services
-/usr/bin/monit restart all
+# Restart the Neutron plugin so there are not
+# communication problems after reconfiguring 
+# the eth3 interface
+service neutron-openvswitch-agent restart
 exit 0
 EOFRCLOCAL
 EOF
