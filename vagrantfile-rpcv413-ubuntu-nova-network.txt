@@ -69,7 +69,7 @@ cat << EOF >> /tmp/rpcv413.json
             },
             "network": {
                 "provider": "nova",
-                "public_interface": "br-eth2"
+                "public_interface": "eth1"
             },
             "networks": {
                 "public": {
