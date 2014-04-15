@@ -163,19 +163,29 @@ exit 0
 EOFRCLOCAL
 EOF
 
-knife bootstrap controller1 --environment rpcv422 --run-list 'role[single-controller],role[single-network-node]' || while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+knife bootstrap controller1 --environment rpcv422
+knife node run_list add controller1 'role[single-controller],role[single-network-node]'
+echo "Waiting for Chef Server indexer to catch up before running chef-client"
+sleep 15
+while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
-knife bootstrap compute1 --environment rpcv422 --run-list 'role[single-compute]' || while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+knife bootstrap compute1 --environment rpcv422
+knife node run_list add compute1 'role[single-compute]'
+echo "Waiting for Chef Server indexer to catch up before running chef-client"
+sleep 15
+while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
-knife bootstrap cinder1 --environment rpcv422 --run-list 'role[cinder-volume]' || while ! knife ssh "name:cinder1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+knife bootstrap cinder1 --environment rpcv422
+knife node run_list add cinder1 'role[cinder-volume]'
+echo "Waiting for Chef Server indexer to catch up before running chef-client"
+sleep 15
+while ! knife ssh "name:cinder1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 #
 # Post-install controller1 configuration
 #
 ssh -T controller1 << EOF
-ip link set eth3 down
-ip addr del 192.168.244.20/24 dev eth3
-ip link set eth3 up
+ip address delete 192.168.244.20/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.20/24 dev br-eth3
 
@@ -186,11 +196,15 @@ sed -i -e '/^exit 0/d' /etc/rc.d/rc.local
 cat << EOFRCLOCAL >> /etc/rc.d/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
-ip link set eth3 down
-ip addr del 192.168.244.20/24 dev eth3
-ip link set eth3 up
+sleep 10
+ip address delete 192.168.244.20/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.20/24 dev br-eth3
+# Restart Open vSwitch and the Neutron plugin
+# so there are not communication problems after
+# reconfiguring the eth3 interface
+service openvswitch restart
+service neutron-openvswitch-agent restart
 exit 0
 EOFRCLOCAL
 EOF
@@ -199,9 +213,7 @@ EOF
 # Post-install compute1 configuration
 #
 ssh -T compute1 << EOF
-ip link set eth3 down
-ip addr del 192.168.244.30/24 dev eth3
-ip link set eth3 up
+ip address delete 192.168.244.30/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.30/24 dev br-eth3
 
@@ -212,11 +224,14 @@ sed -i -e '/^exit 0/d' /etc/rc.d/rc.local
 cat << EOFRCLOCAL >> /etc/rc.d/rc.local
 # This is here to reconfigure eth3
 # if the Vagrant instance is rebooted
-ip link set eth3 down
-ip addr del 192.168.244.30/24 dev eth3
-ip link set eth3 up
+sleep 10
+ip address delete 192.168.244.30/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.30/24 dev br-eth3
+# Restart the Neutron plugin so there are not
+# communication problems after reconfiguring
+# the eth3 interface
+service neutron-openvswitch-agent restart
 exit 0
 EOFRCLOCAL
 EOF
