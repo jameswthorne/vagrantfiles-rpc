@@ -164,17 +164,20 @@ EOF
 
 knife bootstrap controller1 --environment rpcv422
 knife node run_list add controller1 'role[single-controller],role[single-network-node]'
-sleep 10
+echo "Waiting for Chef Server indexer to catch up before running chef-client"
+sleep 15
 while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 knife bootstrap compute1 --environment rpcv422
 knife node run_list add compute1 'role[single-compute]'
-sleep 10
+echo "Waiting for Chef Server indexer to catch up before running chef-client"
+sleep 15
 while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 knife bootstrap cinder1 --environment rpcv422
 knife node run_list add cinder1 'role[cinder-volume]'
-sleep 10
+echo "Waiting for Chef Server indexer to catch up before running chef-client"
+sleep 15
 while ! knife ssh "name:cinder1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 #

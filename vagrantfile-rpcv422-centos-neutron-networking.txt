@@ -165,17 +165,20 @@ EOF
 
 knife bootstrap controller1 --environment rpcv422
 knife node run_list add controller1 'role[single-controller],role[single-network-node]'
-sleep 10
+echo "Waiting for Chef Server indexer to catch up before running chef-client"
+sleep 15
 while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 knife bootstrap compute1 --environment rpcv422
 knife node run_list add compute1 'role[single-compute]'
-sleep 10
+echo "Waiting for Chef Server indexer to catch up before running chef-client"
+sleep 15
 while ! knife ssh "name:compute1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 knife bootstrap cinder1 --environment rpcv422
 knife node run_list add cinder1 'role[cinder-volume]'
-sleep 10
+echo "Waiting for Chef Server indexer to catch up before running chef-client"
+sleep 15
 while ! knife ssh "name:cinder1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
 #
@@ -226,7 +229,7 @@ ip address delete 192.168.244.30/24 dev eth3
 ip link set br-eth3 up
 ip address add 192.168.244.30/24 dev br-eth3
 # Restart the Neutron plugin so there are not
-# communication problems after reconfiguring 
+# communication problems after reconfiguring
 # the eth3 interface
 service neutron-openvswitch-agent restart
 exit 0
