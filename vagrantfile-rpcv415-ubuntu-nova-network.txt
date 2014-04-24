@@ -30,7 +30,7 @@ set -v
 # Set exit on error
 set -e
 
-wget https://raw.github.com/rcbops/support-tools/master/chef-install/install-chef-server.sh -O /tmp/install-chef-server.sh
+curl -O https://raw.github.com/rcbops/support-tools/master/chef-install/install-chef-server.sh -O /tmp/install-chef-server.sh
 
 chmod +x /tmp/install-chef-server.sh
 
