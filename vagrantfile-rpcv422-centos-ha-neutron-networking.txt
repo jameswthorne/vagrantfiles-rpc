@@ -219,6 +219,13 @@ echo "Waiting for Chef Server indexer to catch up before running chef-client"
 sleep 15
 while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
 
+# Temporary fix for https://github.com/rcbops/chef-cookbooks/issues/941
+ssh controller1 << EOF
+neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugin.ini stamp havana
+EOF
+
+while ! knife ssh "name:controller1" "chef-client"; do echo "chef-client failed, retrying"; sleep 5; done
+
 knife bootstrap controller2 --environment rpcv422
 knife node run_list add controller2 'role[ha-controller2],role[single-network-node]'
 echo "Waiting for Chef Server indexer to catch up before running chef-client"
