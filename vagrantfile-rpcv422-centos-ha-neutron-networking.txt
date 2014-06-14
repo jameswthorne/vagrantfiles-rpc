@@ -4,6 +4,8 @@
 
 VAGRANTFILE_API_VERSION = "2"
 
+Vagrant.require_version ">= 1.5.0"
+
 $commonscript = <<COMMONSCRIPT
 # Set verbose
 set -v
@@ -345,6 +347,12 @@ CHEFSCRIPT
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.box = "centos-6.5-x86_64"
+  config.vm.box_url = "http://public.thornelabs.net/centos-6.5-x86_64.box"
+
+  config.vm.provider "vmware_fusion" do |v, override|
+    override.vm.box = "centos-6.5-x86_64"
+    override.vm.box_url = "http://public.thornelabs.net/centos-6.5-x86_64.vmware.box"
+  end
 
   # Turn off shared folders
   config.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true
