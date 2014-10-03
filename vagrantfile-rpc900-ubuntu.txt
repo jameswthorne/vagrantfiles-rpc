@@ -1,0 +1,528 @@
+# -*- mode: ruby -*-
+
+# vi: set ft=ruby :
+
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.require_version ">= 1.5.0"
+
+$commonscript = <<COMMONSCRIPT
+# Set verbose
+set -v
+
+# Set exit on error
+set -e
+
+# Silly Ubuntu 12.04 doesn't have the
+# --stdin option in the passwd utility
+echo root:vagrant | chpasswd
+
+cat << EOF >> /etc/hosts
+192.168.236.10 ansible
+192.168.236.20 controller1
+192.168.236.30 compute1
+192.168.236.50 logger1
+192.168.236.60 haproxy1
+EOF
+COMMONSCRIPT
+
+$script = <<SCRIPT
+# Set verbose
+set -v
+
+# Set exit on error
+set -e
+
+apt-get install -y git
+
+ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa
+
+ssh-keyscan controller1 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.20 >> /root/.ssh/known_hosts
+
+ssh-keyscan compute1 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.30 >> /root/.ssh/known_hosts
+
+ssh-keyscan logger1 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.50 >> /root/.ssh/known_hosts
+
+ssh-keyscan haproxy1 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.60 >> /root/.ssh/known_hosts
+
+apt-get install -y expect
+
+expect<<EOF
+spawn ssh-copy-id controller1
+expect "root@controller1's password:"
+send "vagrant\n"
+expect eof
+EOF
+
+expect<<EOF
+spawn ssh-copy-id compute1
+expect "root@compute1's password:"
+send "vagrant\n"
+expect eof
+EOF
+
+expect<<EOF
+spawn ssh-copy-id logger1
+expect "root@logger1's password:"
+send "vagrant\n"
+expect eof
+EOF
+
+expect<<EOF
+spawn ssh-copy-id haproxy1
+expect "root@haproxy1's password:"
+send "vagrant\n"
+expect eof
+EOF
+
+#
+# OpenStack Controller Network Configuration
+#
+ssh -T controller1 << EOF
+apt-get install -y bridge-utils lsof lvm2 ntp ntpdate openssh-server sudo tcpdump
+
+ip address delete 192.168.240.20/24 dev eth2
+brctl addbr br-mgmt
+brctl addif br-mgmt eth2
+ip link set br-mgmt up
+ip address add 192.168.240.20/24 dev br-mgmt
+
+ip address delete 192.168.244.20/24 dev eth3
+brctl addbr br-vxlan
+brctl addif br-vxlan eth3
+ip link set br-vxlan up
+ip address add 192.168.244.20/24 dev br-vxlan
+
+ip address delete 192.168.248.20/24 dev eth4
+brctl addbr br-vlan
+brctl addif br-vlan eth4
+ip link set br-vlan up
+
+cat << EOFRCLOCAL >> /etc/rc.local
+# This is here to reconfigure
+# networking after a vagrant reload
+sleep 5
+ip address delete 192.168.240.20/24 dev eth2
+brctl addbr br-mgmt
+brctl addif br-mgmt eth2
+ip link set br-mgmt up
+ip address add 192.168.240.20/24 dev br-mgmt
+
+ip address delete 192.168.244.20/24 dev eth3
+brctl addbr br-vxlan
+brctl addif br-vxlan eth3
+ip link set br-vxlan up
+ip address add 192.168.244.20/24 dev br-vxlan
+
+ip address delete 192.168.248.20/24 dev eth4
+brctl addbr br-vlan
+brctl addif br-vlan eth4
+ip link set br-vlan up
+exit 0
+EOFRCLOCAL
+EOF
+
+#
+# OpenStack Compute Network Configuration
+#
+ssh -T compute1 << EOF
+apt-get install -y bridge-utils lsof lvm2 ntp ntpdate openssh-server sudo tcpdump
+
+ip address delete 192.168.240.30/24 dev eth2
+brctl addbr br-mgmt
+brctl addif br-mgmt eth2
+ip link set br-mgmt up
+ip address add 192.168.240.30/24 dev br-mgmt
+
+ip address delete 192.168.244.30/24 dev eth3
+brctl addbr br-vxlan
+brctl addif br-vxlan eth3
+ip link set br-vxlan up
+ip address add 192.168.244.30/24 dev br-vxlan
+
+ip address delete 192.168.248.30/24 dev eth4
+brctl addbr br-vlan
+brctl addif br-vlan eth4
+ip link set br-vlan up
+
+cat << EOFRCLOCAL >> /etc/rc.local
+# This is here to reconfigure
+# networking after a vagrant reload
+sleep 5
+ip address delete 192.168.240.30/24 dev eth2
+brctl addbr br-mgmt
+brctl addif br-mgmt eth2
+ip link set br-mgmt up
+ip address add 192.168.240.30/24 dev br-mgmt
+
+ip address delete 192.168.244.30/24 dev eth3
+brctl addbr br-vxlan
+brctl addif br-vxlan eth3
+ip link set br-vxlan up
+ip address add 192.168.244.30/24 dev br-vxlan
+
+ip address delete 192.168.248.30/24 dev eth4
+brctl addbr br-vlan
+brctl addif br-vlan eth4
+ip link set br-vlan up
+exit 0
+EOFRCLOCAL
+EOF
+
+#
+# Logger Network Configuration
+#
+ssh -T logger1 << EOF
+apt-get install -y bridge-utils lsof lvm2 ntp ntpdate openssh-server sudo tcpdump
+
+ip address delete 192.168.240.50/24 dev eth2
+brctl addbr br-mgmt
+brctl addif br-mgmt eth2
+ip link set br-mgmt up
+ip address add 192.168.240.50/24 dev br-mgmt
+
+cat << EOFRCLOCAL >> /etc/rc.local
+# This is here to reconfigure
+# networking after a vagrant reload
+sleep 5
+ip address delete 192.168.240.50/24 dev eth2
+brctl addbr br-mgmt
+brctl addif br-mgmt eth2
+ip link set br-mgmt up
+ip address add 192.168.240.50/24 dev br-mgmt
+exit 0
+EOFRCLOCAL
+EOF
+
+apt-get install -y build-essential python-dev
+
+cd /opt
+git clone -b 9.0.0 https://github.com/rcbops/ansible-lxc-rpc.git
+
+curl -O https://bootstrap.pypa.io/get-pip.py
+python get-pip.py
+
+pip install -r /opt/ansible-lxc-rpc/requirements.txt
+
+mkdir -p /etc/rpc_deploy
+cp -R /opt/ansible-lxc-rpc/etc/rpc_deploy /etc
+
+cat << EOF >> /etc/rpc_deploy/rpc_user_config.yml
+---
+# Copyright 2014, Rackspace US, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This is the md5 of the environment file
+# this will ensure consistency when deploying.
+environment_version: e0955a92a761d5845520a82dcca596af
+
+# User defined CIDR used for containers
+# Global cidr/s used for everything.
+cidr_networks:
+  # Cidr used in the Management network
+  container: 192.168.240.0/24
+  # Cidr used in the Service network
+  #snet: 172.29.248.0/22
+  # Cidr used in the VM network
+  tunnel: 192.168.244.0/24
+  # Cidr used in the Storage network
+  #storage: 172.29.244.0/22
+
+# User defined list of consumed IP addresses that may intersect 
+# with the provided CIDR.
+used_ips:
+  - 192.168.240.10,192.168.240.70
+  - 192.168.244.10,192.168.244.70
+
+# As a user you can define anything that you may wish to "globally"
+# override from within the rpc_deploy configuration file. Anything 
+# specified here will take precedence over anything else any where.
+global_overrides:
+  # Internal Management vip address
+  internal_lb_vip_address: 192.168.240.60
+  # External DMZ VIP address
+  external_lb_vip_address: 192.168.236.60
+  # Bridged interface to use with tunnel type networks
+  tunnel_bridge: "br-vxlan"
+  # Bridged interface to build containers with
+  management_bridge: "br-mgmt"
+  # Define your Add on container networks.
+  #  group_binds: bind a provided network to a particular group
+  #  container_bridge: instructs inventory where a bridge is plugged
+  #                    into on the host side of a veth pair
+  #  container_interface: interface name within a container
+  #  ip_from_q: name of a cidr to pull an IP address from
+  #  type: Networks must have a type. types are: ["raw", "vxlan", "flat", "vlan"]
+  #  range: Optional value used in "vxlan" and "vlan" type networks
+  #  net_name: Optional value used in mapping network names used in neutron ml2
+  # You must have a management network.
+  provider_networks:
+    - network:
+        group_binds:
+          - all_containers
+          - hosts
+        type: "raw"
+        container_bridge: "br-mgmt"
+        container_interface: "eth1"
+        ip_from_q: "container"
+    #- network:
+    #    group_binds:
+    #      - glance_api
+    #     - cinder_api
+    #      - cinder_volume
+    #      - nova_compute
+    #    type: "raw"
+    #    container_bridge: "br-storage"
+    #    container_interface: "eth2"
+    #    ip_from_q: "storage"
+    #- network:
+    #    group_binds:
+    #      - glance_api
+    #      - nova_compute
+    #      - neutron_linuxbridge_agent
+    #    type: "raw"
+    #    container_bridge: "br-snet"
+    #    container_interface: "eth3"
+    #    ip_from_q: "snet"
+    - network:
+        group_binds:
+          - neutron_linuxbridge_agent
+        container_bridge: "br-vxlan"
+        container_interface: "eth10"
+        ip_from_q: "tunnel"
+        type: "vxlan"
+        range: "1:1000"
+        net_name: "vxlan"
+    #- network:
+    #    group_binds:
+    #      - neutron_linuxbridge_agent
+    #    container_bridge: "br-vlan"
+    #    container_interface: "eth11"
+    #    type: "flat"
+    #    net_name: "vlan"
+    - network:
+        group_binds:
+          - neutron_linuxbridge_agent
+        container_bridge: "br-vlan"
+        container_interface: "eth11"
+        type: "vlan"
+        range: "1:1"
+        net_name: "vlan"
+  # Name of load balancer
+  lb_name: lb_name_in_core
+
+# User defined Infrastructure Hosts, this should be a required group
+infra_hosts:
+  controller1:
+    ip: 192.168.240.20
+
+# User defined Compute Hosts, this should be a required group
+compute_hosts:
+  compute1:
+    ip: 192.168.240.30
+
+# User defined Storage Hosts, this should be a required group
+#storage_hosts:
+#  cinder1:
+#    ip: 172.29.236.104
+#    # "container_vars" can be set outside of all other options as 
+#    # host specific optional variables.
+#    container_vars:
+#      # In this example we are defining what cinder volumes are 
+#      # on a given host.
+#      cinder_backends:
+#        # if the "limit_container_types" argument is set, within 
+#        # the top level key of the provided option the inventory
+#        # process will perform a string match on the container name with
+#        # the value found within the "limit_container_types" argument.
+#        # If any part of the string found within the container 
+#        # name the options are appended as host_vars inside of inventory.
+#        limit_container_types: cinder_volume
+#        lvm:
+#          volume_group: cinder-volumes
+#          volume_driver: cinder.volume.drivers.lvm.LVMISCSIDriver
+#          volume_backend_name: LVM_iSCSI
+
+# User defined Logging Hosts, this should be a required group
+log_hosts:
+  logger1:
+    ip: 192.168.240.50
+
+# User defined Networking Hosts, this should be a required group
+network_hosts:
+  controller1:
+    ip: 192.168.240.20
+
+haproxy_hosts:
+  haproxy1:
+    ip: 192.168.240.60
+EOF
+
+cd /opt/ansible-lxc-rpc/rpc_deployment
+
+/opt/ansible-lxc-rpc/scripts/pw-token-gen.py --file /etc/rpc_deploy/user_variables.yml
+
+while ! ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/setup/host-setup.yml; do echo "host-setup.yml failed, retrying"; sleep 5; done
+
+while ! ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/infrastructure/haproxy-install.yml; do echo "haproxy-install.yml failed, retrying"; sleep 5; done
+
+while ! ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/infrastructure/infrastructure-setup.yml; do echo "infrastructure-setup.yml failed, retrying"; sleep 5; done
+
+sed -i '/cinder-all/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/openstack/openstack-setup.yml
+
+sed -i '/rpc-support/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/openstack/openstack-setup.yml
+
+while ! ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/openstack/openstack-setup.yml; do echo "haproxy-install.yml failed, retrying"; sleep 5; done
+
+echo "All done!"
+SCRIPT
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+  config.vm.box = "ubuntu-server-14.04.1-lts-x86_64"
+
+  # Turn off shared folders
+  config.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true
+
+  # Begin controller1
+  config.vm.define "controller1" do |controller1_config|
+    controller1_config.vm.hostname = "controller1"
+
+    controller1_config.vm.provision "shell", inline: $commonscript
+
+    # eth1
+    controller1_config.vm.network "private_network", ip: "192.168.236.20"
+    # eth2
+    controller1_config.vm.network "private_network", ip: "192.168.240.20"
+    # eth3
+    controller1_config.vm.network "private_network", ip: "192.168.244.20"
+    # eth4
+    controller1_config.vm.network "private_network", ip: "192.168.248.20"
+
+    controller1_config.vm.provider "vmware_fusion" do |v|
+        v.vmx["memsize"] = "2048"
+        v.vmx["numvcpus"] = "1"
+    end
+
+    controller1_config.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--memory", "2048"]
+        v.customize ["modifyvm", :id, "--cpus", "1"]
+        v.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
+    end
+  end
+  # End controller1
+
+  # Begin compute1
+  config.vm.define "compute1" do |compute1_config|
+    compute1_config.vm.hostname = "compute1"
+
+    compute1_config.vm.provision "shell", inline: $commonscript
+
+    # eth1
+    compute1_config.vm.network "private_network", ip: "192.168.236.30"
+    # eth2
+    compute1_config.vm.network "private_network", ip: "192.168.240.30"
+    # eth3
+    compute1_config.vm.network "private_network", ip: "192.168.244.30"
+    # eth4
+    compute1_config.vm.network "private_network", ip: "192.168.248.30"
+
+    compute1_config.vm.provider "vmware_fusion" do |v|
+        v.vmx["memsize"] = "2048"
+        v.vmx["numvcpus"] = "2"
+    end
+
+    compute1_config.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--memory", "2048"]
+        v.customize ["modifyvm", :id, "--cpus", "2"]
+        v.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
+    end
+  end
+  # End compute1
+
+  # Begin logger1
+  config.vm.define "logger1" do |logger1_config|
+    logger1_config.vm.hostname = "logger1"
+ 
+    logger1_config.vm.provision "shell", inline: $commonscript
+ 
+    # eth1
+    logger1_config.vm.network "private_network", ip: "192.168.236.50"
+    # eth2
+    logger1_config.vm.network "private_network", ip: "192.168.240.50"
+ 
+    logger1_config.vm.provider "vmware_fusion" do |v|
+        v.vmx["memsize"] = "1024"
+        v.vmx["numvcpus"] = "1"
+    end
+ 
+    logger1_config.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--memory", "1024"]
+        v.customize ["modifyvm", :id, "--cpus", "1"]
+        v.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
+    end
+  end
+  # End logger1
+
+  # Begin haproxy1
+  config.vm.define "haproxy1" do |haproxy1_config|
+    haproxy1_config.vm.hostname = "haproxy1"
+
+    haproxy1_config.vm.provision "shell", inline: $commonscript
+
+    # eth1
+    haproxy1_config.vm.network "private_network", ip: "192.168.236.60"
+    # eth2
+    haproxy1_config.vm.network "private_network", ip: "192.168.240.60"
+
+    haproxy1_config.vm.provider "vmware_fusion" do |v|
+        v.vmx["memsize"] = "512"
+        v.vmx["numvcpus"] = "1"
+    end
+
+    haproxy1_config.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--memory", "512"]
+        v.customize ["modifyvm", :id, "--cpus", "1"]
+    end
+  end
+  # End haproxy1
+
+  # Begin ansible
+  config.vm.define "ansible" do |ansible_config|
+    ansible_config.vm.hostname = "ansible"
+
+    ansible_config.vm.provision "shell", inline: $commonscript
+    ansible_config.vm.provision "shell", inline: $script
+
+    # eth1
+    ansible_config.vm.network "private_network", ip: "192.168.236.10"
+    # eth2
+    ansible_config.vm.network "private_network", ip: "192.168.240.10"
+
+    ansible_config.vm.provider "vmware_fusion" do |v|
+        v.vmx["memsize"] = "512"
+        v.vmx["numvcpus"] = "1"
+    end
+
+    ansible_config.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--memory", "512"]
+        v.customize ["modifyvm", :id, "--cpus", "1"]
+    end
+  end
+  # End ansible
+end
