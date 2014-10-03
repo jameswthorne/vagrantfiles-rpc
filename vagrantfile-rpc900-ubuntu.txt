@@ -21,7 +21,6 @@ cat << EOF >> /etc/hosts
 192.168.236.10 ansible
 192.168.236.20 controller1
 192.168.236.30 compute1
-192.168.236.50 logger1
 192.168.236.60 haproxy1
 EOF
 COMMONSCRIPT
@@ -43,9 +42,6 @@ ssh-keyscan 192.168.236.20 >> /root/.ssh/known_hosts
 ssh-keyscan compute1 >> /root/.ssh/known_hosts
 ssh-keyscan 192.168.236.30 >> /root/.ssh/known_hosts
 
-ssh-keyscan logger1 >> /root/.ssh/known_hosts
-ssh-keyscan 192.168.236.50 >> /root/.ssh/known_hosts
-
 ssh-keyscan haproxy1 >> /root/.ssh/known_hosts
 ssh-keyscan 192.168.236.60 >> /root/.ssh/known_hosts
 
@@ -61,13 +57,6 @@ EOF
 expect<<EOF
 spawn ssh-copy-id compute1
 expect "root@compute1's password:"
-send "vagrant\n"
-expect eof
-EOF
-
-expect<<EOF
-spawn ssh-copy-id logger1
-expect "root@logger1's password:"
 send "vagrant\n"
 expect eof
 EOF
@@ -173,31 +162,6 @@ exit 0
 EOFRCLOCAL
 EOF
 
-#
-# Logger Network Configuration
-#
-ssh -T logger1 << EOF
-apt-get install -y bridge-utils lsof lvm2 ntp ntpdate openssh-server sudo tcpdump
-
-ip address delete 192.168.240.50/24 dev eth2
-brctl addbr br-mgmt
-brctl addif br-mgmt eth2
-ip link set br-mgmt up
-ip address add 192.168.240.50/24 dev br-mgmt
-
-cat << EOFRCLOCAL >> /etc/rc.local
-# This is here to reconfigure
-# networking after a vagrant reload
-sleep 5
-ip address delete 192.168.240.50/24 dev eth2
-brctl addbr br-mgmt
-brctl addif br-mgmt eth2
-ip link set br-mgmt up
-ip address add 192.168.240.50/24 dev br-mgmt
-exit 0
-EOFRCLOCAL
-EOF
-
 apt-get install -y build-essential python-dev
 
 cd /opt
@@ -211,7 +175,7 @@ pip install -r /opt/ansible-lxc-rpc/requirements.txt
 mkdir -p /etc/rpc_deploy
 cp -R /opt/ansible-lxc-rpc/etc/rpc_deploy /etc
 
-cat << EOF >> /etc/rpc_deploy/rpc_user_config.yml
+cat << EOF > /etc/rpc_deploy/rpc_user_config.yml
 ---
 # Copyright 2014, Rackspace US, Inc.
 #
@@ -246,8 +210,8 @@ cidr_networks:
 # User defined list of consumed IP addresses that may intersect 
 # with the provided CIDR.
 used_ips:
-  - 192.168.240.10,192.168.240.70
-  - 192.168.244.10,192.168.244.70
+  - 192.168.240.1,192.168.240.70
+  - 192.168.244.1,192.168.244.70
 
 # As a user you can define anything that you may wish to "globally"
 # override from within the rpc_deploy configuration file. Anything 
@@ -359,9 +323,9 @@ compute_hosts:
 #          volume_backend_name: LVM_iSCSI
 
 # User defined Logging Hosts, this should be a required group
-log_hosts:
-  logger1:
-    ip: 192.168.240.50
+#log_hosts:
+#  logger1:
+#    ip: 192.168.240.50
 
 # User defined Networking Hosts, this should be a required group
 network_hosts:
@@ -377,17 +341,25 @@ cd /opt/ansible-lxc-rpc/rpc_deployment
 
 /opt/ansible-lxc-rpc/scripts/pw-token-gen.py --file /etc/rpc_deploy/user_variables.yml
 
-while ! ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/setup/host-setup.yml; do echo "host-setup.yml failed, retrying"; sleep 5; done
+ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/setup/host-setup.yml
 
-while ! ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/infrastructure/haproxy-install.yml; do echo "haproxy-install.yml failed, retrying"; sleep 5; done
+ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/infrastructure/haproxy-install.yml
 
-while ! ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/infrastructure/infrastructure-setup.yml; do echo "infrastructure-setup.yml failed, retrying"; sleep 5; done
+sed -i '/elasticsearch-install/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/infrastructure/infrastructure-setup.yml
+
+sed -i '/logstash-install/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/infrastructure/infrastructure-setup.yml
+
+sed -i '/kibana-install/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/infrastructure/infrastructure-setup.yml
+
+sed -i '/es2unix-install/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/infrastructure/infrastructure-setup.yml
+
+ansible-playbook -e @/etc/rpc_deploy/user_variables.yml rpc_deployment/playbooks/infrastructure/infrastructure-setup.yml
 
 sed -i '/cinder-all/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/openstack/openstack-setup.yml
 
 sed -i '/rpc-support/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/openstack/openstack-setup.yml
 
-while ! ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/openstack/openstack-setup.yml; do echo "haproxy-install.yml failed, retrying"; sleep 5; done
+ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/openstack/openstack-setup.yml
 
 echo "All done!"
 SCRIPT
@@ -416,12 +388,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     controller1_config.vm.network "private_network", ip: "192.168.248.20"
 
     controller1_config.vm.provider "vmware_fusion" do |v|
-        v.vmx["memsize"] = "2048"
+        v.vmx["memsize"] = "8192"
         v.vmx["numvcpus"] = "1"
     end
 
     controller1_config.vm.provider "virtualbox" do |v|
-        v.customize ["modifyvm", :id, "--memory", "2048"]
+        v.customize ["modifyvm", :id, "--memory", "8192"]
         v.customize ["modifyvm", :id, "--cpus", "1"]
         v.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
     end
@@ -444,41 +416,17 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     compute1_config.vm.network "private_network", ip: "192.168.248.30"
 
     compute1_config.vm.provider "vmware_fusion" do |v|
-        v.vmx["memsize"] = "2048"
+        v.vmx["memsize"] = "3072"
         v.vmx["numvcpus"] = "2"
     end
 
     compute1_config.vm.provider "virtualbox" do |v|
-        v.customize ["modifyvm", :id, "--memory", "2048"]
+        v.customize ["modifyvm", :id, "--memory", "3072"]
         v.customize ["modifyvm", :id, "--cpus", "2"]
         v.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
     end
   end
   # End compute1
-
-  # Begin logger1
-  config.vm.define "logger1" do |logger1_config|
-    logger1_config.vm.hostname = "logger1"
- 
-    logger1_config.vm.provision "shell", inline: $commonscript
- 
-    # eth1
-    logger1_config.vm.network "private_network", ip: "192.168.236.50"
-    # eth2
-    logger1_config.vm.network "private_network", ip: "192.168.240.50"
- 
-    logger1_config.vm.provider "vmware_fusion" do |v|
-        v.vmx["memsize"] = "1024"
-        v.vmx["numvcpus"] = "1"
-    end
- 
-    logger1_config.vm.provider "virtualbox" do |v|
-        v.customize ["modifyvm", :id, "--memory", "1024"]
-        v.customize ["modifyvm", :id, "--cpus", "1"]
-        v.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
-    end
-  end
-  # End logger1
 
   # Begin haproxy1
   config.vm.define "haproxy1" do |haproxy1_config|
