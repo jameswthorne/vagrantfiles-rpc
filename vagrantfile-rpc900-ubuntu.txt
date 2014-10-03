@@ -395,6 +395,7 @@ SCRIPT
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.box = "ubuntu-server-14.04.1-lts-x86_64"
+  config.vm.box_url = "http://public.thornelabs.net/ubuntu-server-14.04.1-lts-x86_64.box"
 
   # Turn off shared folders
   config.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true
