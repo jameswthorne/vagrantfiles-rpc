@@ -64,6 +64,11 @@ cat << EOF >> /tmp/rpcv415.json
     "chef_type": "environment",
     "default_attributes": {},
     "override_attributes": {
+        "keystone": {
+            "pki": {
+                "enabled": false
+            }
+        },
         "nova": {
             "libvirt": {
                 "virt_type": "qemu",
