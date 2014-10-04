@@ -21,6 +21,7 @@ cat << EOF >> /etc/hosts
 192.168.236.10 ansible
 192.168.236.20 controller1
 192.168.236.30 compute1
+192.168.236.50 logger1
 192.168.236.60 haproxy1
 EOF
 COMMONSCRIPT
@@ -42,6 +43,9 @@ ssh-keyscan 192.168.236.20 >> /root/.ssh/known_hosts
 ssh-keyscan compute1 >> /root/.ssh/known_hosts
 ssh-keyscan 192.168.236.30 >> /root/.ssh/known_hosts
 
+ssh-keyscan logger1 >> /root/.ssh/known_hosts
+ssh-keyscan 192.168.236.50 >> /root/.ssh/known_hosts
+
 ssh-keyscan haproxy1 >> /root/.ssh/known_hosts
 ssh-keyscan 192.168.236.60 >> /root/.ssh/known_hosts
 
@@ -57,6 +61,13 @@ EOF
 expect<<EOF
 spawn ssh-copy-id compute1
 expect "root@compute1's password:"
+send "vagrant\n"
+expect eof
+EOF
+
+expect<<EOF
+spawn ssh-copy-id logger1
+expect "root@logger1's password:"
 send "vagrant\n"
 expect eof
 EOF
@@ -158,6 +169,31 @@ ip address delete 192.168.248.30/24 dev eth4
 brctl addbr br-vlan
 brctl addif br-vlan eth4
 ip link set br-vlan up
+exit 0
+EOFRCLOCAL
+EOF
+
+#
+# Logger Network Configuration
+#
+ssh -T logger1 << EOF
+apt-get install -y bridge-utils lsof lvm2 ntp ntpdate openssh-server sudo tcpdump
+
+ip address delete 192.168.240.50/24 dev eth2
+brctl addbr br-mgmt
+brctl addif br-mgmt eth2
+ip link set br-mgmt up
+ip address add 192.168.240.50/24 dev br-mgmt
+
+cat << EOFRCLOCAL >> /etc/rc.local
+# This is here to reconfigure
+# networking after a vagrant reload
+sleep 5
+ip address delete 192.168.240.50/24 dev eth2
+brctl addbr br-mgmt
+brctl addif br-mgmt eth2
+ip link set br-mgmt up
+ip address add 192.168.240.50/24 dev br-mgmt
 exit 0
 EOFRCLOCAL
 EOF
@@ -323,9 +359,9 @@ compute_hosts:
 #          volume_backend_name: LVM_iSCSI
 
 # User defined Logging Hosts, this should be a required group
-#log_hosts:
-#  logger1:
-#    ip: 192.168.240.50
+log_hosts:
+  logger1:
+    ip: 192.168.240.50
 
 # User defined Networking Hosts, this should be a required group
 network_hosts:
@@ -344,14 +380,6 @@ cd /opt/ansible-lxc-rpc/rpc_deployment
 ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/setup/host-setup.yml
 
 ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/infrastructure/haproxy-install.yml
-
-sed -i '/elasticsearch-install/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/infrastructure/infrastructure-setup.yml
-
-sed -i '/logstash-install/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/infrastructure/infrastructure-setup.yml
-
-sed -i '/kibana-install/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/infrastructure/infrastructure-setup.yml
-
-sed -i '/es2unix-install/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/infrastructure/infrastructure-setup.yml
 
 ansible-playbook -e @/etc/rpc_deploy/user_variables.yml rpc_deployment/playbooks/infrastructure/infrastructure-setup.yml
 
@@ -450,6 +478,30 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
   end
   # End haproxy1
+
+  # Begin logger1
+  config.vm.define "logger1" do |logger1_config|
+    logger1_config.vm.hostname = "logger1"
+
+    logger1_config.vm.provision "shell", inline: $commonscript
+
+    # eth1
+    logger1_config.vm.network "private_network", ip: "192.168.236.50"
+    # eth2
+    logger1_config.vm.network "private_network", ip: "192.168.240.50"
+
+    logger1_config.vm.provider "vmware_fusion" do |v|
+        v.vmx["memsize"] = "1024"
+        v.vmx["numvcpus"] = "1"
+    end
+
+    logger1_config.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--memory", "1024"]
+        v.customize ["modifyvm", :id, "--cpus", "1"]
+        v.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
+    end
+  end
+  # End logger1
 
   # Begin ansible
   config.vm.define "ansible" do |ansible_config|
