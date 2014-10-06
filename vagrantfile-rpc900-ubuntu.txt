@@ -381,7 +381,7 @@ ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/setup/host-set
 
 ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/infrastructure/haproxy-install.yml
 
-ansible-playbook -e @/etc/rpc_deploy/user_variables.yml rpc_deployment/playbooks/infrastructure/infrastructure-setup.yml
+ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/infrastructure/infrastructure-setup.yml
 
 sed -i '/cinder-all/d' /opt/ansible-lxc-rpc/rpc_deployment/playbooks/openstack/openstack-setup.yml
 
