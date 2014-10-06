@@ -13,7 +13,7 @@ set -v
 # Set exit on error
 set -e
 
-# Silly Ubuntu 12.04 doesn't have the
+# Silly Ubuntu 14.04 doesn't have the
 # --stdin option in the passwd utility
 echo root:vagrant | chpasswd
 
@@ -102,7 +102,7 @@ brctl addbr br-vlan
 brctl addif br-vlan eth4
 ip link set br-vlan up
 
-cat << EOFRCLOCAL >> /etc/rc.local
+cat << EOFRCLOCAL > /etc/rc.local
 # This is here to reconfigure
 # networking after a vagrant reload
 sleep 5
@@ -149,7 +149,7 @@ brctl addbr br-vlan
 brctl addif br-vlan eth4
 ip link set br-vlan up
 
-cat << EOFRCLOCAL >> /etc/rc.local
+cat << EOFRCLOCAL > /etc/rc.local
 # This is here to reconfigure
 # networking after a vagrant reload
 sleep 5
@@ -185,7 +185,7 @@ brctl addif br-mgmt eth2
 ip link set br-mgmt up
 ip address add 192.168.240.50/24 dev br-mgmt
 
-cat << EOFRCLOCAL >> /etc/rc.local
+cat << EOFRCLOCAL > /etc/rc.local
 # This is here to reconfigure
 # networking after a vagrant reload
 sleep 5
@@ -329,12 +329,12 @@ global_overrides:
 # User defined Infrastructure Hosts, this should be a required group
 infra_hosts:
   controller1:
-    ip: 192.168.240.20
+    ip: 192.168.236.20
 
 # User defined Compute Hosts, this should be a required group
 compute_hosts:
   compute1:
-    ip: 192.168.240.30
+    ip: 192.168.236.30
 
 # User defined Storage Hosts, this should be a required group
 #storage_hosts:
@@ -361,16 +361,16 @@ compute_hosts:
 # User defined Logging Hosts, this should be a required group
 log_hosts:
   logger1:
-    ip: 192.168.240.50
+    ip: 192.168.236.50
 
 # User defined Networking Hosts, this should be a required group
 network_hosts:
   controller1:
-    ip: 192.168.240.20
+    ip: 192.168.236.20
 
 haproxy_hosts:
   haproxy1:
-    ip: 192.168.240.60
+    ip: 192.168.236.60
 EOF
 
 cd /opt/ansible-lxc-rpc/rpc_deployment
@@ -406,13 +406,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     controller1_config.vm.provision "shell", inline: $commonscript
 
-    # eth1
+    # eth1 host network
     controller1_config.vm.network "private_network", ip: "192.168.236.20"
-    # eth2
+    # eth2 container management network
     controller1_config.vm.network "private_network", ip: "192.168.240.20"
-    # eth3
+    # eth3 vxlan network
     controller1_config.vm.network "private_network", ip: "192.168.244.20"
-    # eth4
+    # eth4 vlan network
     controller1_config.vm.network "private_network", ip: "192.168.248.20"
 
     controller1_config.vm.provider "vmware_fusion" do |v|
@@ -424,6 +424,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         v.customize ["modifyvm", :id, "--memory", "8192"]
         v.customize ["modifyvm", :id, "--cpus", "1"]
         v.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
+        v.customize ["modifyvm", :id, "--nicpromisc4", "allow-all"]
     end
   end
   # End controller1
@@ -434,13 +435,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     compute1_config.vm.provision "shell", inline: $commonscript
 
-    # eth1
+    # eth1 host network
     compute1_config.vm.network "private_network", ip: "192.168.236.30"
-    # eth2
+    # eth2 container management network
     compute1_config.vm.network "private_network", ip: "192.168.240.30"
-    # eth3
+    # eth3 vxlan network
     compute1_config.vm.network "private_network", ip: "192.168.244.30"
-    # eth4
+    # eth4 vlan network
     compute1_config.vm.network "private_network", ip: "192.168.248.30"
 
     compute1_config.vm.provider "vmware_fusion" do |v|
@@ -462,9 +463,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     haproxy1_config.vm.provision "shell", inline: $commonscript
 
-    # eth1
+    # eth1 host network
     haproxy1_config.vm.network "private_network", ip: "192.168.236.60"
-    # eth2
+    # eth2 container management network
     haproxy1_config.vm.network "private_network", ip: "192.168.240.60"
 
     haproxy1_config.vm.provider "vmware_fusion" do |v|
@@ -485,9 +486,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     logger1_config.vm.provision "shell", inline: $commonscript
 
-    # eth1
+    # eth1 host network
     logger1_config.vm.network "private_network", ip: "192.168.236.50"
-    # eth2
+    # eth2 container management network
     logger1_config.vm.network "private_network", ip: "192.168.240.50"
 
     logger1_config.vm.provider "vmware_fusion" do |v|
@@ -510,9 +511,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     ansible_config.vm.provision "shell", inline: $commonscript
     ansible_config.vm.provision "shell", inline: $script
 
-    # eth1
+    # eth1 host network
     ansible_config.vm.network "private_network", ip: "192.168.236.10"
-    # eth2
+    # eth2 container management network
     ansible_config.vm.network "private_network", ip: "192.168.240.10"
 
     ansible_config.vm.provider "vmware_fusion" do |v|
