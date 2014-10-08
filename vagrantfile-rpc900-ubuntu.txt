@@ -396,6 +396,25 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.box = "ubuntu-server-14.04.1-lts-x86_64"
   config.vm.box_url = "http://public.thornelabs.net/ubuntu-server-14.04.1-lts-x86_64.box"
+  config.vm.provider "vmware_fusion" do |vmware, override|
+    override.vm.box = "ubuntu-server-14.04.1-lts-x86_64.vmware"
+    override.vm.box_url = "http://public.thornelabs.net/ubuntu-server-14.04.1-lts-x86_64.vmware.box"
+
+    # Fusion Performance Hacks
+    vmware.vmx["logging"] = "FALSE"
+    vmware.vmx["MemTrimRate"] = "0"
+    vmware.vmx["MemAllowAutoScaleDown"] = "FALSE"
+    vmware.vmx["mainMem.backing"] = "swap"
+    vmware.vmx["sched.mem.pshare.enable"] = "FALSE"
+    vmware.vmx["snapshot.disabled"] = "TRUE"
+    vmware.vmx["isolation.tools.unity.disable"] = "TRUE"
+    vmware.vmx["unity.allowCompostingInGuest"] = "FALSE"
+    vmware.vmx["unity.enableLaunchMenu"] = "FALSE"
+    vmware.vmx["unity.showBadges"] = "FALSE"
+    vmware.vmx["unity.showBorders"] = "FALSE"
+    vmware.vmx["unity.wasCapable"] = "FALSE"
+    vmware.vmx["vhv.enable"] = "TRUE"
+  end
 
   # Turn off shared folders
   config.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true
