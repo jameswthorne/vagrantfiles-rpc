@@ -201,7 +201,7 @@ EOF
 apt-get install -y build-essential python-dev
 
 cd /opt
-git clone -b 9.0.0 https://github.com/rcbops/ansible-lxc-rpc.git
+git clone -b 9.0.1 https://github.com/rcbops/ansible-lxc-rpc.git
 
 curl -O https://bootstrap.pypa.io/get-pip.py
 python get-pip.py
