@@ -207,7 +207,7 @@ EOF
 apt-get install -y build-essential python-dev
 
 cd /opt
-git clone -b 9.0.1 https://github.com/rcbops/ansible-lxc-rpc.git
+git clone -b 9.0.3 https://github.com/rcbops/ansible-lxc-rpc.git
 
 curl -O https://bootstrap.pypa.io/get-pip.py
 python get-pip.py
@@ -382,6 +382,8 @@ EOF
 cd /opt/ansible-lxc-rpc/rpc_deployment
 
 /opt/ansible-lxc-rpc/scripts/pw-token-gen.py --file /etc/rpc_deploy/user_variables.yml
+
+sed -i 's/forks = 25/forks = 5/' /opt/ansible-lxc-rpc/rpc_deployment/ansible.cfg
 
 ansible-playbook -e @/etc/rpc_deploy/user_variables.yml playbooks/setup/host-setup.yml
 
